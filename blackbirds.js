@@ -1,12 +1,14 @@
-const fs = require('fs');
+const axios = require('axios');
 const romanNumerals = require('roman-numerals');
 
 function loadImageData(filepath) {
-  return fs.readFileSync(filepath, {encoding: 'base64'});
+  return axios.get(filepath, {responseType: 'arraybuffer'}).then((res) => {
+    return new Buffer(res.data, 'binary').toString('base64');
+  });
 }
 
 function imagePath(stanza, number) {
-  return `./assets/blackbirds/${ stanza }/sentence${ number }.jpg`
+  return `https://s3.amazonaws.com/ways-of-looking/blackbirds/${ stanza }/sentence${ number }.jpg`
 }
 
 function nextStanza(stanza) {
@@ -35,10 +37,12 @@ function nextImageData(stanza) {
 
 function nextPost(lastPost) {
   const next = nextStanza(lastPost) + 1;
-  return {
-    postContent: romanNumerals.toRoman(next).toString(),
-    imageData: nextImageData(lastPost)
-  }
+  return nextImageData(lastPost).then((data) => {
+    return {
+      postContent: romanNumerals.toRoman(next).toString(),
+      imageData: data 
+    }
+  });
 }
 
 module.exports = {

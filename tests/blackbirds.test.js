@@ -1,18 +1,22 @@
 const blackbirds = require('../blackbirds');
-jest.mock('fs');
-const fs = require('fs');
+jest.mock('axios');
+const axios = require('axios');
 
 describe('blackbirds', () => {
 
   test('generates an image path', () => {
-    expect(blackbirds.imagePath(0, 0)).toBe('./assets/blackbirds/0/sentence0.jpg');
+    expect(blackbirds.imagePath(0, 0)).toBe('https://s3.amazonaws.com/ways-of-looking/blackbirds/0/sentence0.jpg');
   });
 
   test('loads image data', () => {
-    fs.readFileSync = jest.fn(() => {
-      return 'abc123';
+    axios.get = jest.fn(() => {
+      return new Promise((res, rej) => {
+        res({data: 'abc123'})
+      })
     })
-    expect(blackbirds.loadImageData('./some/fake/path.jpg')).toBe('abc123');
+    return blackbirds.loadImageData('./some/fake/path.jpg').then((data) => {
+      expect(data).toBe('YWJjMTIz'); 
+    });
   });
 
   test('calculates the next stanza', () => {
@@ -23,17 +27,23 @@ describe('blackbirds', () => {
   });
 
   test('generates an image path based on the last stanza', () => {
-    expect(blackbirds.nextImage('I')).toMatch(/\.\/assets\/blackbirds\/1\/sentence\d{1,2}\.jpg/);
+    expect(blackbirds.nextImage('I')).toMatch(/https:\/\/s3\.amazonaws\.com\/ways-of-looking\/blackbirds\/1\/sentence\d{1,2}\.jpg/);
   });
 
   test('generates the next post', () => {
-    expect(blackbirds.nextPost('I')).toEqual({
-      postContent: 'II',
-      imageData: 'abc123'
-    });
-    expect(blackbirds.nextPost('XIII')).toEqual({
-      postContent: 'I',
-      imageData: 'abc123'
-    });
+    return Promise.all([
+      blackbirds.nextPost('I').then((nextPost) => {
+        expect(nextPost).toEqual({
+          postContent: 'II',
+          imageData: 'YWJjMTIz'
+        });
+      }),
+      blackbirds.nextPost('XIII').then((nextPost) => {
+        expect(nextPost).toEqual({
+          postContent: 'I',
+          imageData: 'YWJjMTIz'
+        })
+      })
+    ]);
   });
 });
